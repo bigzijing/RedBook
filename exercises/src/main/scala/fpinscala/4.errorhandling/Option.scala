@@ -1,7 +1,7 @@
 package fpinscala.errorhandling
 
 
-import scala.{Option => _, Some => _, Either => _, _} // hide std library `Option`, `Some` and `Either`, since we are writing our own in this chapter
+import scala.{Either => _, Option => _, Some => _, _} // hide std library `Option`, `Some` and `Either`, since we are writing our own in this chapter
 
 sealed trait Option[+A] {
   /**
@@ -12,7 +12,7 @@ sealed trait Option[+A] {
     case None => None
   }
 
-  def getOrElse[B>:A](default: => B): B = this match {
+  def getOrElse[B >: A](default: => B): B = this match {
     case Some(get) => get
     case None => default
   }
@@ -20,14 +20,16 @@ sealed trait Option[+A] {
   def flatMap[B](f: A => Option[B]): Option[B] =
     map(f).getOrElse(None)
 
-  def orElse[B>:A](ob: => Option[B]): Option[B] =
+  def orElse[B >: A](ob: => Option[B]): Option[B] =
     map(Some(_)).getOrElse(ob)
 
   def filter(f: A => Boolean): Option[A] =
     if (map(f).getOrElse(false)) this
     else None
 }
+
 case class Some[+A](get: A) extends Option[A]
+
 case object None extends Option[Nothing]
 
 object Option {
@@ -37,7 +39,9 @@ object Option {
       val x = 42 + 5
       x + y
     }
-    catch { case e: Exception => 43 } // A `catch` block is just a pattern matching block like the ones we've seen. `case e: Exception` is a pattern that matches any `Exception`, and it binds this value to the identifier `e`. The match returns the value 43.
+    catch {
+      case e: Exception => 43
+    } // A `catch` block is just a pattern matching block like the ones we've seen. `case e: Exception` is a pattern that matches any `Exception`, and it binds this value to the identifier `e`. The match returns the value 43.
   }
 
   def failingFn2(i: Int): Int = {
@@ -45,7 +49,9 @@ object Option {
       val x = 42 + 5
       x + ((throw new Exception("fail!")): Int) // A thrown Exception can be given any type; here we're annotating it with the type `Int`
     }
-    catch { case e: Exception => 43 }
+    catch {
+      case e: Exception => 43
+    }
   }
 
   def mean(xs: Seq[Double]): Option[Double] =
@@ -63,7 +69,7 @@ object Option {
   /**
    * Exercise 4.3
    */
-  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = (a, b) match {
+  def map2[A, B, C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = (a, b) match {
     case (Some(a), Some(b)) => Some(f(a, b))
     case _ => None
   }
@@ -97,4 +103,23 @@ object Option {
         f(aa, bb)
       }
     }
+}
+
+object OptionSimpleTest {
+  import Option._
+
+  def main(args: Array[String]): Unit = {
+    val some = Some(10)
+    val none: Option[Int] = None
+
+    assert(some.map(_ + 10) == Some(20) && none.map(_ + 10) == None)
+    assert(some.getOrElse(100) == 10 && none.getOrElse(100) == 100)
+    assert(some.flatMap(_ => Some(5)) == Some(5) && none.flatMap(_ => Some(5)) == None)
+    assert(some.orElse(Some(10)) == Some(10) && none.orElse(Some(50)) == Some(50))
+    assert(some.filter(_ > 100) == None && none.filter(_ => true) == None)
+    assert(map2[Int, Int, Int](some, some)(_ + _) == Some(20))
+    assert(sequence(List(some, none)) == None && sequence(List(some, some, some)) == Some(List(10, 10, 10)))
+    assert(sequence2(List(some, none)) == None && sequence2(List(some, some, some)) == Some(List(10, 10, 10)))
+    assert(traverse(List(10, 10, 10))(a => if (a == 10) Some(10) else None) == Some(List(10, 10, 10)) && traverse(List(10, 5))(a => if (a == 10) Some(10) else None) == None)
+  }
 }

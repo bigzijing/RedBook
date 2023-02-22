@@ -9,26 +9,25 @@ sealed trait Either[+E, +A] {
    * Exercise 4.6
    */
   def map[B](f: A => B): Either[E, B] = this match {
+    case Right(a) => Right(f(a))
     case Left(e) => Left(e)
-    case Right(v) => Right(f(v))
   }
 
-  def flatMap[EE >: E, B](f: A => Either[EE, B]): Either[EE, B] = this.map(f) match {
+  def flatMap[EE >: E, B](f: A => Either[EE, B]): Either[EE, B] = this match {
+    case Right(a) => f(a)
     case Left(e) => Left(e)
-    case Right(v) => v
   }
 
   def orElse[EE >: E, B >: A](b: => Either[EE, B]): Either[EE, B] = this match {
     case Left(_) => b
-    case Right(v) => Right(v)
+    case right => right
   }
 
   def map2[EE >: E, B, C](b: Either[EE, B])(f: (A, B) => C): Either[EE, C] =
-    this.flatMap { aa =>
-      b.map { bb =>
-        f(aa, bb)
-      }
-    }
+    for {
+      a <- this
+      b <- b
+    } yield f(a, b)
 }
 
 case class Left[+E](get: E) extends Either[E, Nothing]
@@ -38,15 +37,11 @@ case class Right[+A](get: A) extends Either[Nothing, A]
 object Either {
   def traverse[E, A, B](es: List[A])(f: A => Either[E, B]): Either[E, List[B]] = es match {
     case Nil => Right(Nil)
-    case head :: tail => f(head).flatMap { value =>
-      traverse(tail)(f).map { fTail =>
-        value :: fTail
-      }
-    }
+    case h :: tail => traverse(tail)(f).map(t => f(h) :: t)
   }
 
   def sequence[E, A](es: List[Either[E, A]]): Either[E, List[A]] =
-    traverse(es)(x => x)
+    traverse(es)(identity)
 
   def mean(xs: IndexedSeq[Double]): Either[String, Double] =
     if (xs.isEmpty)
@@ -66,4 +61,15 @@ object Either {
       case e: Exception => Left(e)
     }
 
-}
+  object EitherSimpleTest {
+
+    def main(args: Array[String]): Unit = {
+      val right: Either[String, Int] = Right(10)
+      val left: Either[String, Int] = Left("error")
+
+      assert(right.map(_ + 90) == Right(100) && left.map(_ + 90) == left)
+      assert(right.flatMap(a => Right(a + 90)) == Right(100) && left.flatMap(a => Right(a + 90)) == left)
+      assert(right.orElse(Right(1000)) == right && left.orElse(right) == right)
+      assert(right.map2(right)(_ + _) == Right(20) && right.map2(left)(_ + _) == left && left.map2(right)(_ + _) == left)
+    }
+  }
