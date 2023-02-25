@@ -37,7 +37,7 @@ case class Right[+A](get: A) extends Either[Nothing, A]
 object Either {
   def traverse[E, A, B](es: List[A])(f: A => Either[E, B]): Either[E, List[B]] = es match {
     case Nil => Right(Nil)
-    case h :: tail => traverse(tail)(f).map(t => f(h) :: t)
+    case h :: tail => f(h).flatMap(head => traverse(tail)(f).map(t => head :: t))
   }
 
   def sequence[E, A](es: List[Either[E, A]]): Either[E, List[A]] =
@@ -60,16 +60,17 @@ object Either {
     catch {
       case e: Exception => Left(e)
     }
+}
 
-  object EitherSimpleTest {
+object EitherSimpleTest {
 
-    def main(args: Array[String]): Unit = {
-      val right: Either[String, Int] = Right(10)
-      val left: Either[String, Int] = Left("error")
+  def main(args: Array[String]): Unit = {
+    val right: Either[String, Int] = Right(10)
+    val left: Either[String, Int] = Left("error")
 
-      assert(right.map(_ + 90) == Right(100) && left.map(_ + 90) == left)
-      assert(right.flatMap(a => Right(a + 90)) == Right(100) && left.flatMap(a => Right(a + 90)) == left)
-      assert(right.orElse(Right(1000)) == right && left.orElse(right) == right)
-      assert(right.map2(right)(_ + _) == Right(20) && right.map2(left)(_ + _) == left && left.map2(right)(_ + _) == left)
-    }
+    assert(right.map(_ + 90) == Right(100) && left.map(_ + 90) == left)
+    assert(right.flatMap(a => Right(a + 90)) == Right(100) && left.flatMap(a => Right(a + 90)) == left)
+    assert(right.orElse(Right(1000)) == right && left.orElse(right) == right)
+    assert(right.map2(right)(_ + _) == Right(20) && right.map2(left)(_ + _) == left && left.map2(right)(_ + _) == left)
   }
+}
