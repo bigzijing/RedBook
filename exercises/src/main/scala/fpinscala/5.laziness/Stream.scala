@@ -7,9 +7,14 @@ trait Stream[+A] {
   /**
    * Exercise 5.1
    */
-  def toList: List[A] = this match {
-    case Empty => Nil
-    case Cons(h, t) => h() :: t().toList
+  def toList: List[A] = {
+  @annotation.tailrec
+    def loop(s: Stream[A], acc: List[A]): List[A] = s match {
+      case Empty => acc
+      case Cons(h, t) => loop(t(), h() :: acc)
+    }
+
+    loop(this, List.empty).reverse
   }
 
   def foldRight[B](z: => B)(f: (A, => B) => B): B = // The arrow `=>` in front of the argument type `B` means that the function `f` takes its second argument by name and may choose not to evaluate it.
@@ -73,7 +78,10 @@ trait Stream[+A] {
    * Exercise 5.6 (hard)
    */
   def headOption: Option[A] =
-    foldRight[Option[A]](None)((a, _) => Some(a))
+    this.foldRight(Option.empty[A]) {
+      case (a, _) => Some(a)
+      case _ => None
+    }
 
   // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
   // writing your own function signatures.
@@ -226,4 +234,41 @@ object Stream {
     unfold(a)(_ => Some((a, a)))
 
   def ones2: Stream[Int] = unfold(1)(_ => Some((1, 1)))
+}
+
+object StreamSimpleTest {
+  def main(args: Array[String]): Unit = {
+    val stream1 = Stream(1,2,3,4,5)
+
+    assert(stream1.toList == List(1,2,3,4,5))
+    assert(stream1.take(3).toList == Stream(1,2,3).toList)
+    assert(stream1.drop(3).toList == Stream(4,5).toList)
+    assert(stream1.takeWhile(_ <= 3).toList == List(1,2,3))
+    assert(stream1.forAll(_ < 10))
+    assert(stream1.takeWhile2(_ <= 3).toList == List(1, 2, 3))
+    assert(stream1.headOption == Some(1))
+    assert(empty[Int].headOption == Option.empty[Int])
+    assert(stream1.map(_ + 100).toList == List(101, 102, 103, 104, 105))
+    assert(stream1.filter(_ <= 3).toList == List(1,2,3))
+    assert(stream1.append(Stream(6,7,8)).toList == List(1,2,3,4,5,6,7,8))
+    assert(stream1.flatMap(a => Stream(0, a, 0)).toList == List(0,1,0,0,2,0,0,3,0,0,4,0,0,5,0))
+    assert(constant(1).take(5).toList == List(1,1,1,1,1))
+    assert(from(5).take(5).toList == List(5,6,7,8,9))
+    assert(fibs.take(9).toList == List(0,1,1,2,3,5,8,13,21))
+    assert(unfold(true)(_ => Some((10, true))).take(5).toList == List(10, 10, 10, 10, 10))
+    assert(fibs2.take(9).toList == List(0,1,1,2,3,5,8,13,21))
+    assert(from2(5).take(5).toList == List(5, 6, 7, 8, 9))
+    assert(constant2(1).take(5).toList == List(1,1,1,1,1))
+    assert(ones2.take(5).toList == List(1,1,1,1,1))
+    assert(stream1.map2(_ + 100).toList == List(101, 102, 103, 104, 105))
+    assert(constant(1).take2(5).toList == List(1, 1, 1, 1, 1))
+    assert(stream1.take2(6).toList == Stream(1, 2, 3, 4, 5).toList)
+    assert(stream1.take2(1).toList == Stream(1).toList)
+    assert(stream1.takeWhile3(_ <= 3).toList == List(1,2,3))
+    assert(stream1.zipWith(stream1)((a, b) => (a, b)).toList == List((1,1), (2,2), (3,3), (4,4), (5,5)))
+    assert(stream1.take(2).zipAll(Stream(1)).toList == List((Some(1), Some(1)), (Some(2), None)))
+    assert(stream1.startsWith(Stream(1,2,3)))
+    assert(stream1.startsWith(empty))
+    assert(Stream(1,2,3).tails.toList.map(_.toList) == List(List(1,2,3), List(2,3), List(3), List.empty))
+  }
 }
