@@ -40,7 +40,6 @@ object Monoid {
   // TODO: Placeholder for `Gen`. Remove once you have implemented the `Gen`
   // data type from Part 2.
 
-  import fpinscala.testing._
   import Prop._
   def monoidLaws[A](m: Monoid[A], gen: Gen[A]): Prop = ???
 
