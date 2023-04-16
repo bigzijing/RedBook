@@ -11,6 +11,16 @@ trait Parsers[Parser[+_]] {
 
   def run[A](p: Parser[A])(input: String): Either[ParseError, A]
 
+  def succeed[A](a: A): Parser[A]
+
+  implicit def string(s: String): Parser[String]
+
+  implicit def operators[A](p: Parser[A]) = ParserOps[A](p)
+
+  implicit def asStringParser[A](a: A)(implicit f: A => Parser[String]): ParserOps[String] = ParserOps(f(a))
+
+  implicit def regex(r: Regex): Parser[String]
+
   def char(c: Char): Parser[Char] =
     string(c.toString).map(_.charAt(0))
 
@@ -23,8 +33,6 @@ trait Parsers[Parser[+_]] {
     if (n <= 0) succeed(List())
     else map2(p, listOfN(n - 1, p))(_ :: _)
 
-  def succeed[A](a: A): Parser[A] =
-    string("").map(_ => a)
 
   def slice[A](p: Parser[A]): Parser[String]
 
@@ -44,8 +52,14 @@ trait Parsers[Parser[+_]] {
     flatMap(p)(a => map(p2)(b => (a, b)))
 
   def map2FlatMap[A, B, C](p: Parser[A], p2: => Parser[B])(f: (A, B) => C): Parser[C] =
-    flatMap(p)(a => flatMap(p2)(b => f(a, b)))
+    for {
+      a <- p
+      b <- p2
+    } yield f(a, b)
 
+  /**
+   * Exercise 9.8
+   */
   def map[A, B](a: Parser[A])(f: A => B): Parser[B] =
     flatMap(a)(f.andThen(succeed))
 
@@ -57,13 +71,11 @@ trait Parsers[Parser[+_]] {
   def map2[A, B, C](p: Parser[A], p2: => Parser[B])(f: (A, B) => C): Parser[C] =
     map(product(p, p2))(f.tupled)
 
-  implicit def string(s: String): Parser[String]
+  def label[A](msg: String)(p: Parser[A]): Parser[A]
 
-  implicit def operators[A](p: Parser[A]) = ParserOps[A](p)
+  def scope[A](msg: String)(p: Parser[A]): Parser[A]
 
-  implicit def asStringParser[A](a: A)(implicit f: A => Parser[String]): ParserOps[String] = ParserOps(f(a))
-
-  implicit def regex(r: Regex): Parser[String]
+  def attempt[A](p: Parser[A]): Parser[A]
 
   case class ParserOps[A](p: Parser[A]) {
     def |[B >: A](p2: Parser[B]): Parser[B] = self.or(p, p2)
@@ -127,4 +139,17 @@ case class Location(input: String, offset: Int = 0) {
 
 case class ParseError(stack: List[(Location, String)] = List(),
                       otherFailures: List[ParseError] = List()) {
+
+  def push(loc: Location, msg: String): ParseError =
+    copy(stack = (loc, msg) :: stack)
+
+  def label[A](s: String): ParseError =
+    ParseError(latestLoc.map((_, s)).toList)
+
+  def latestLoc: Option[Location] =
+    latest.map(_._1)
+
+  def latest: Option[(Location, String)] =
+    stack.lastOption
+
 }

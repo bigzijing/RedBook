@@ -11,7 +11,11 @@ object JSON {
   case class JArray(get: IndexedSeq[JSON]) extends JSON
   case class JObject(get: Map[String, JSON]) extends JSON
 
+  /**
+   * Exercise 9.9 (hard)
+   */
   def jsonParser[Parser[+_]](P: Parsers[Parser]): Parser[JSON] = {
+
     ???
   }
 }
