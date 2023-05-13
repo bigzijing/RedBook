@@ -1,7 +1,5 @@
 package fpinscala.localeffects
 
-import fpinscala.monads._
-
 object Mutable {
   def quicksort(xs: List[Int]): List[Int] = if (xs.isEmpty) xs else {
     val arr = xs.toArray

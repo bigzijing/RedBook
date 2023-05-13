@@ -1,11 +1,12 @@
 package fpinscala
 package applicative
 
-import monads.Functor
 import state._
 import State._
-import StateUtil._ // defined at bottom of this file
+import StateUtil._
+import fpinscala.monads.Functor
 import monoids._
+
 import language.higherKinds
 import language.implicitConversions
 
